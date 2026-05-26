@@ -552,6 +552,30 @@
       transition: color .2s; padding: 0;
     }
     .privacy-link:hover { color: rgba(250,243,230,.7); }
+
+    .modal-footer {
+      position: sticky; bottom: 0; background: var(--white);
+      border-top: 1px solid var(--cream-dark);
+      padding: 1.2rem 1.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap;
+    }
+    .modal-footer p {
+      font-size: .76rem; color: var(--plum); opacity: .55;
+      margin: 0; line-height: 1.4;
+    }
+    .btn-understand {
+      background: var(--burgundy); color: var(--cream);
+      border: none; border-radius: 50px;
+      padding: .7rem 1.8rem;
+      font-family: var(--fb); font-size: .78rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      cursor: pointer; white-space: nowrap;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .btn-understand:hover { background: var(--plum); }
+
   </style>
 </head>
 <body>
@@ -770,11 +794,11 @@
 </footer>
 
 <!-- ─── PRIVACY MODAL ─── -->
-<div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="modal-overlay" id="privacyModal">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
     <div class="modal-header">
       <h2 id="privacyTitle">Privacy Policy</h2>
-      <button class="modal-close" onclick="document.getElementById('privacyModal').classList.remove('open')" aria-label="Close">✕</button>
+      <button class="modal-close" aria-label="Close">✕</button>
     </div>
     <div class="modal-body">
       <p><strong>Effective Date: January 1, 2025 &nbsp;·&nbsp; Last Updated: January 1, 2025</strong></p>
@@ -819,6 +843,10 @@
       <p><a href="https://www.instagram.com/nancygs_homebakery" target="_blank" rel="noopener">@nancygs_homebakery</a></p>
 
       <p style="margin-top:1.5rem;font-size:.75rem;opacity:.5">This Privacy Policy applies to nancygshomebakery.com only. It does not govern data practices on Instagram, Zelle, Venmo, Apple Pay, YouTube, or any other third-party platform.</p>
+
+    <div class="modal-footer">
+      <p>By continuing to use this site you acknowledge our privacy practices.</p>
+      <button class="btn-understand" id="privacyAcceptBtn">I Understand ✓</button>
     </div>
   </div>
 </div>
@@ -1014,10 +1042,46 @@ document.querySelectorAll('.rv').forEach(el => obs.observe(el));
 
 loadData();
 
-// Close privacy modal on Escape
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.getElementById('privacyModal').classList.remove('open');
+// ── Privacy notice ──
+const PRIVACY_KEY = 'nancyg_privacy_v1';
+
+function closePrivacy() {
+  document.getElementById('privacyModal').classList.remove('open');
+  try { localStorage.setItem(PRIVACY_KEY, '1'); } catch(e) {}
+}
+
+// "I Understand" button
+document.getElementById('privacyAcceptBtn').addEventListener('click', closePrivacy);
+
+// X button & backdrop already call remove('open') in HTML;
+// also save to localStorage when X is clicked
+document.querySelector('#privacyModal .modal-close').addEventListener('click', () => {
+  try { localStorage.setItem(PRIVACY_KEY, '1'); } catch(e) {}
 });
+
+// Close on backdrop click — also save
+document.getElementById('privacyModal').addEventListener('click', function(e) {
+  if (e.target === this) closePrivacy();
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePrivacy();
+});
+
+// Auto-show on first visit (after a short delay so page renders first)
+try {
+  if (!localStorage.getItem(PRIVACY_KEY)) {
+    setTimeout(() => {
+      document.getElementById('privacyModal').classList.add('open');
+    }, 800);
+  }
+} catch(e) {
+  // localStorage blocked (private browsing) — show anyway
+  setTimeout(() => {
+    document.getElementById('privacyModal').classList.add('open');
+  }, 800);
+}
 
 </script>
 </body>
