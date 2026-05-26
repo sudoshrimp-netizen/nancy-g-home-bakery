@@ -321,17 +321,6 @@
       display: flex; align-items: flex-end; justify-content: space-between;
       flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;
     }
-    .cat-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 2rem; }
-    .tab {
-      padding: .45rem 1.1rem; border-radius: 50px;
-      border: 1.5px solid var(--cream-dark); background: transparent;
-      font-family: var(--fb); font-size: .72rem; font-weight: 700;
-      letter-spacing: .1em; text-transform: uppercase;
-      color: var(--plum); cursor: pointer; transition: all .2s;
-    }
-    .tab:hover, .tab.on {
-      background: var(--burgundy); color: var(--cream); border-color: var(--burgundy);
-    }
     .menu-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
@@ -362,10 +351,6 @@
       font-size: .6rem; font-weight: 700; letter-spacing: .08em;
       text-transform: uppercase; background: var(--cream-mid);
       color: var(--plum); padding: .2rem .6rem; border-radius: 50px;
-    }
-    .mc-cat {
-      font-size: .6rem; font-weight: 700; letter-spacing: .15em;
-      text-transform: uppercase; color: var(--mauve); margin-bottom: .35rem;
     }
     .mc-name {
       font-family: var(--fd); font-size: 1.2rem; font-weight: 600;
@@ -736,7 +721,6 @@
         <h2 class="st">The <em>Menu</em></h2>
       </div>
     </div>
-    <div class="cat-tabs rv" id="catTabs"></div>
     <div id="menuWrap">
       <div class="skel-grid" id="skelGrid">
         <div class="skel-card"><div class="skel" style="aspect-ratio:4/3"></div><div style="padding:1.2rem"><div class="skel" style="height:11px;width:55%;margin-bottom:10px;border-radius:4px"></div><div class="skel" style="height:18px;width:75%;margin-bottom:8px;border-radius:4px"></div><div class="skel" style="height:10px;width:88%;margin-bottom:5px;border-radius:4px"></div><div class="skel" style="height:10px;width:65%;margin-bottom:14px;border-radius:4px"></div><div class="skel" style="height:18px;width:38%;border-radius:4px"></div></div></div>
@@ -1045,37 +1029,16 @@ async function fetchSheet(tab) {
 }
 
 let allItems = [];
-let activeTab = 'All';
-
-function buildTabs(items) {
-  const cats = ['All', ...new Set(items.map(i => i.cat))];
-  const wrap = document.getElementById('catTabs');
-  wrap.innerHTML = '';
-  cats.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'tab' + (c === activeTab ? ' on' : '');
-    b.textContent = c === 'All' ? 'All Items' : c;
-    b.addEventListener('click', () => { activeTab = c; renderMenu(); setActiveTab(c); });
-    wrap.appendChild(b);
-  });
-}
-
-function setActiveTab(cat) {
-  document.querySelectorAll('.tab').forEach(b =>
-    b.classList.toggle('on', b.textContent === (cat === 'All' ? 'All Items' : cat)));
-}
 
 function renderMenu() {
   const grid = document.getElementById('menuGrid');
-  const items = activeTab === 'All' ? allItems : allItems.filter(i => i.cat === activeTab);
-  grid.innerHTML = items.map(it => {
+  grid.innerHTML = allItems.map(it => {
     const img = getImg(it.name, it.photo);
     return `
       <div class="menu-card${it.avail ? '' : ' unavail'}">
         ${it.avail ? '' : '<span class="unavail-tag">Unavailable</span>'}
         ${img ? `<div class="card-photo"><img src="${img}" alt="${it.name}" loading="lazy"></div>` : ''}
         <div class="card-body">
-          <div class="mc-cat">${it.cat}</div>
           <div class="mc-name">${it.name}</div>
           ${it.desc  ? `<div class="mc-desc">${it.desc}</div>`  : ''}
           <div class="mc-price">${it.price}</div>
@@ -1147,7 +1110,6 @@ async function loadData() {
 
   document.getElementById('skelGrid').style.display = 'none';
   document.getElementById('menuGrid').style.display  = '';
-  buildTabs(allItems);
   renderMenu();
 }
 
