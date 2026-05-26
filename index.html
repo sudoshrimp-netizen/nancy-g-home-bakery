@@ -1068,44 +1068,23 @@ function showDataBadge(live, detail) {
 }
 
 async function loadData() {
-  const configured = SHEET_ID !== 'YOUR_GOOGLE_SHEET_ID_HERE';
+  // Menu is hardcoded — always use the built-in item list
+  allItems = FALLBACK;
+
+  // Only fetch Settings so Nancy can update booking status, bio, etc.
   try {
-    if (!configured) throw new Error('Sheet ID not set');
-
-    const [menuCSV, settingsCSV] = await Promise.all([
-      fetchSheet('Menu'), fetchSheet('Settings'),
-    ]);
-
-    // Parse menu
-    const parsedMenu = parseMenu(parseCSV(menuCSV));
-    if (!parsedMenu.length) throw new Error('Menu sheet returned 0 rows — check tab is named exactly "Menu"');
-    allItems = parsedMenu;
-
-    // Parse settings
-    const settings = parseSettings(parseCSV(settingsCSV));
+    const settingsCSV = await fetchSheet('Settings');
+    const settings    = parseSettings(parseCSV(settingsCSV));
     const status = settings.booking_status || 'Check Instagram for availability';
     const note   = settings.announcement  || '';
     document.getElementById('bookingText').textContent = note ? `${status} — ${note}` : status;
     renderAbout(settings);
-
-    showDataBadge(true);
-    console.info('✅ Menu loaded from Google Sheets — ' + allItems.length + ' items');
-
+    console.info('✅ Settings loaded from Google Sheets');
   } catch(err) {
-    allItems = FALLBACK;
+    // Settings failed — use the defaults baked into the HTML
     document.getElementById('bookingText').textContent =
       'Booked thru July 2026 — August & September now open';
-
-    const msg = err && err.message ? err.message : 'Unknown error';
-    showDataBadge(false, configured ? 'sheet error' : 'no Sheet ID');
-    console.warn('⚠️ Could not load Google Sheet:', msg);
-    console.warn(
-      '🔧 Checklist:\n' +
-      '  1. Sheet ID correct? Current: ' + SHEET_ID + '\n' +
-      '  2. Published to web? File → Share → Publish to web\n' +
-      '  3. Tab names exactly "Menu" and "Settings" (case-sensitive)\n' +
-      '  4. Sheet is set to "Anyone with the link can view"'
-    );
+    console.warn('⚠️ Could not load Settings sheet:', err && err.message);
   }
 
   document.getElementById('skelGrid').style.display = 'none';
