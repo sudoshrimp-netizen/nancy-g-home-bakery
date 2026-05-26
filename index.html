@@ -615,6 +615,7 @@
     .btn-understand:hover { background: var(--plum); }
 
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 
@@ -953,39 +954,14 @@ const FALLBACK = [
 
 // CSV parsing
 function parseCSV(raw) {
-  // RFC 4180-compliant parser — handles:
-  //   • \r\n and \r line endings (Google Sheets exports both)
-  //   • Quoted fields with embedded newlines (merged/wrapped Excel cells)
-  //   • Escaped quotes inside fields ("")
-  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const rows = [];
-  let row = [], cur = '', inQ = false;
-
-  for (let i = 0; i <= text.length; i++) {
-    const c = text[i];
-
-    if (i === text.length) {
-      // End of input — flush last field and row
-      row.push(cur.trim());
-      if (row.some(f => f)) rows.push(row);
-      break;
-    }
-
-    if (inQ) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { cur += '"'; i++; } // escaped quote ("")
-        else inQ = false;                              // closing quote
-      } else {
-        cur += c; // keep everything inside quotes, including newlines
-      }
-    } else {
-      if      (c === '"')  { inQ = true; }
-      else if (c === ',')  { row.push(cur.trim()); cur = ''; }
-      else if (c === '\n') { row.push(cur.trim()); rows.push(row); row = []; cur = ''; }
-      else                 { cur += c; }
-    }
-  }
-  return rows;
+  // PapaParse handles all CSV edge cases:
+  // embedded newlines, escaped quotes, \r\n endings, etc.
+  const result = Papa.parse(raw.trim(), {
+    skipEmptyLines: true,
+    relaxColumnCount: true,
+  });
+  // Trim every field value
+  return result.data.map(row => row.map(f => (f || '').trim()));
 }
 
 // Expected Menu columns: Category|Name|Description|Price|Notes|Available|Photo URL (optional)
@@ -1024,7 +1000,12 @@ function parseSettings(rows) {
   const obj = {};
   for (const r of rows.slice(startIdx)) {
     const k = (r[0] || '').trim();
-    if (k && k.toLowerCase() !== 'key') obj[k] = (r[1] || '').trim();
+    // Skip blank rows, the header, and hint/divider rows
+    // (hint rows start with ↳ or ── and are just for Nancy's reference)
+    if (!k) continue;
+    if (k.toLowerCase() === 'key') continue;
+    if (k.startsWith('↳') || k.startsWith('──') || k.startsWith('--')) continue;
+    obj[k] = (r[1] || '').trim();
   }
   return obj;
 }
