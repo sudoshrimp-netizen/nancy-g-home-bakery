@@ -718,7 +718,6 @@
         <h2 class="st">The <em>Menu</em></h2>
       </div>
     </div>
-    <div id="dataBadge"></div>
     <div class="cat-tabs rv" id="catTabs"></div>
     <div id="menuWrap">
       <div class="skel-grid" id="skelGrid">
@@ -954,22 +953,42 @@ function parseCSV(raw) {
 
 // Expected Menu columns: Category|Name|Description|Price|Notes|Available|Photo URL (optional)
 function parseMenu(rows) {
-  const [, ...data] = rows;
-  return data.filter(r => r[0] && r[1]).map(r => ({
-    cat:   r[0] || '',
-    name:  r[1] || '',
-    desc:  r[2] || '',
-    price: r[3] || '',
-    notes: r[4] || '',
-    avail: (r[5] || 'TRUE').toUpperCase() !== 'FALSE',
-    photo: r[6] || '',
-  }));
+  // Find the header row (the one where col 0 is "Category") regardless
+  // of how many title/instruction rows appear above it in the sheet.
+  let startIdx = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i][0] || '').trim().toLowerCase() === 'category') {
+      startIdx = i + 1; // data begins on the row AFTER the header
+      break;
+    }
+  }
+  return rows.slice(startIdx)
+    .filter(r => r[0] && r[1] && (r[0] || '').trim().toLowerCase() !== 'category')
+    .map(r => ({
+      cat:   (r[0] || '').trim(),
+      name:  (r[1] || '').trim(),
+      desc:  (r[2] || '').trim(),
+      price: (r[3] || '').trim(),
+      notes: (r[4] || '').trim(),
+      avail: (r[5] || 'TRUE').trim().toUpperCase() !== 'FALSE',
+      photo: (r[6] || '').trim(),
+    }));
 }
 
 function parseSettings(rows) {
-  const [, ...data] = rows;
+  // Find the header row (col 0 = "Key") and start after it.
+  let startIdx = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i][0] || '').trim().toLowerCase() === 'key') {
+      startIdx = i + 1;
+      break;
+    }
+  }
   const obj = {};
-  for (const r of data) { if (r[0]) obj[r[0].trim()] = r[1] || ''; }
+  for (const r of rows.slice(startIdx)) {
+    const k = (r[0] || '').trim();
+    if (k && k.toLowerCase() !== 'key') obj[k] = (r[1] || '').trim();
+  }
   return obj;
 }
 
@@ -1033,11 +1052,12 @@ function renderMenu() {
 }
 
 function showDataBadge(live, detail) {
-  const el = document.getElementById('dataBadge');
-  if (!el) return;
-  el.innerHTML = live
-    ? `<span class="data-badge live"><span class="dot"></span>Live from Google Sheets</span>`
-    : `<span class="data-badge fallback"><span class="dot"></span>Using default menu${detail ? ' — ' + detail : ''}</span>`;
+  // Badge hidden from visitors — status is console-only
+  if (live) {
+    console.info('✅ Data source: Live from Google Sheets');
+  } else {
+    console.warn('⚠️ Data source: Using default menu' + (detail ? ' — ' + detail : ''));
+  }
 }
 
 async function loadData() {
