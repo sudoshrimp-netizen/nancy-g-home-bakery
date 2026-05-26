@@ -161,7 +161,9 @@
     }
     .hero-loc {
       font-size: .7rem; font-weight: 700; letter-spacing: .16em;
-      text-transform: uppercase; color: var(--sage); margin-bottom: 2rem;
+      text-transform: uppercase;
+      color: rgba(250,243,230,.82); /* light cream — readable on dark hero */
+      margin-bottom: 2rem;
       opacity: 0; animation: fadeUp .7s ease .42s forwards;
     }
     .booking-pill {
@@ -288,14 +290,29 @@
     }
     .gallery-track img {
       flex: 1 1 0;
-      min-width: 0;
+      min-width: 140px; /* never narrower than 140px */
       object-fit: cover;
+      object-position: center;
       filter: brightness(.85) saturate(1.1);
       transition: flex .4s ease, filter .3s;
     }
     .gallery-track img:hover {
       flex: 2 1 0;
       filter: brightness(1) saturate(1.2);
+    }
+    /* Mobile: scroll horizontally, fixed-width tiles */
+    @media (max-width: 640px) {
+      .gallery-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .gallery-track {
+        height: 180px;
+        flex-wrap: nowrap;
+        overflow-x: visible;
+      }
+      .gallery-track img {
+        flex: 0 0 52vw; /* each image takes ~52% of screen width */
+        min-width: 0;
+      }
+      .gallery-track img:hover { flex: 0 0 52vw; } /* no expand on touch */
     }
 
     /* ── MENU ── */
@@ -493,7 +510,7 @@
       .nav-links { display: none; }
       .hamburger { display: flex; }
       .hero-inner { padding: 6rem 1.5rem 4rem; }
-      .gallery-track { height: 160px; }
+      .gallery-track { height: 190px; }
     }
     @media (max-width: 500px) {
       .steps { grid-template-columns: 1fr; }
