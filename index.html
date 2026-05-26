@@ -953,17 +953,37 @@ const FALLBACK = [
 
 // CSV parsing
 function parseCSV(raw) {
+  // RFC 4180-compliant parser — handles:
+  //   • \r\n and \r line endings (Google Sheets exports both)
+  //   • Quoted fields with embedded newlines (merged/wrapped Excel cells)
+  //   • Escaped quotes inside fields ("")
+  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const rows = [];
-  for (const line of raw.trim().split('\n')) {
-    const cols = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
-      else cur += c;
+  let row = [], cur = '', inQ = false;
+
+  for (let i = 0; i <= text.length; i++) {
+    const c = text[i];
+
+    if (i === text.length) {
+      // End of input — flush last field and row
+      row.push(cur.trim());
+      if (row.some(f => f)) rows.push(row);
+      break;
     }
-    cols.push(cur.trim());
-    rows.push(cols);
+
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; } // escaped quote ("")
+        else inQ = false;                              // closing quote
+      } else {
+        cur += c; // keep everything inside quotes, including newlines
+      }
+    } else {
+      if      (c === '"')  { inQ = true; }
+      else if (c === ',')  { row.push(cur.trim()); cur = ''; }
+      else if (c === '\n') { row.push(cur.trim()); rows.push(row); row = []; cur = ''; }
+      else                 { cur += c; }
+    }
   }
   return rows;
 }
