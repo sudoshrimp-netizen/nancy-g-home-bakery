@@ -553,6 +553,27 @@
     }
     .privacy-link:hover { color: rgba(250,243,230,.7); }
 
+    /* ── DATA SOURCE BADGE ── */
+    .data-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .68rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; padding: .3rem .9rem;
+      border-radius: 50px; margin-bottom: 1.5rem;
+    }
+    .data-badge.live {
+      background: #EAF5EC; color: #2E7D32;
+      border: 1px solid #A5D6A7;
+    }
+    .data-badge.fallback {
+      background: #FFF8E1; color: #F57F17;
+      border: 1px solid #FFE082;
+    }
+    .data-badge .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+
+
     .modal-footer {
       position: sticky; bottom: 0; background: var(--white);
       border-top: 1px solid var(--cream-dark);
@@ -697,6 +718,7 @@
         <h2 class="st">The <em>Menu</em></h2>
       </div>
     </div>
+    <div id="dataBadge"></div>
     <div class="cat-tabs rv" id="catTabs"></div>
     <div id="menuWrap">
       <div class="skel-grid" id="skelGrid">
@@ -859,7 +881,7 @@
      See SETUP_GUIDE.md for full instructions.
      ════════════════════════════════════════ -->
 <script>
-const SHEET_ID = 'b-Z9Vg1Yh3IG0WLu0LYG9mJQCugc1g_f';
+const SHEET_ID = '1b-Z9Vg1Yh3IG0WLu0LYG9mJQCugc1g_f';
 
 // Image map: menu item name keywords → local image filename
 // (used when Google Sheets doesn't supply a photo URL)
@@ -952,10 +974,21 @@ function parseSettings(rows) {
 }
 
 async function fetchSheet(tab) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('fetch failed');
-  return r.text();
+  // Cache-bust so updates to the sheet reflect immediately
+  const bust = Date.now();
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&t=${bust}`;
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status} for sheet tab: ${tab}`);
+  const text = await r.text();
+  // Google returns a 200-status HTML login redirect when the sheet isn't
+  // published — detect this and throw so we fall back gracefully
+  if (text.trim().startsWith('<')) {
+    throw new Error(
+      'Sheet returned HTML instead of CSV. ' +
+      'Make sure the sheet is published: File → Share → Publish to web → CSV.'
+    );
+  }
+  return text;
 }
 
 let allItems = [];
@@ -999,24 +1032,54 @@ function renderMenu() {
   }).join('');
 }
 
+function showDataBadge(live, detail) {
+  const el = document.getElementById('dataBadge');
+  if (!el) return;
+  el.innerHTML = live
+    ? `<span class="data-badge live"><span class="dot"></span>Live from Google Sheets</span>`
+    : `<span class="data-badge fallback"><span class="dot"></span>Using default menu${detail ? ' — ' + detail : ''}</span>`;
+}
+
 async function loadData() {
   const configured = SHEET_ID !== 'YOUR_GOOGLE_SHEET_ID_HERE';
   try {
-    if (!configured) throw new Error('not configured');
+    if (!configured) throw new Error('Sheet ID not set');
+
     const [menuCSV, settingsCSV] = await Promise.all([
       fetchSheet('Menu'), fetchSheet('Settings'),
     ]);
-    allItems = parseMenu(parseCSV(menuCSV));
+
+    // Parse menu
+    const parsedMenu = parseMenu(parseCSV(menuCSV));
+    if (!parsedMenu.length) throw new Error('Menu sheet returned 0 rows — check tab is named exactly "Menu"');
+    allItems = parsedMenu;
+
+    // Parse settings
     const settings = parseSettings(parseCSV(settingsCSV));
     const status = settings.booking_status || 'Check Instagram for availability';
     const note   = settings.announcement  || '';
     document.getElementById('bookingText').textContent = note ? `${status} — ${note}` : status;
-  } catch {
+
+    showDataBadge(true);
+    console.info('✅ Menu loaded from Google Sheets — ' + allItems.length + ' items');
+
+  } catch(err) {
     allItems = FALLBACK;
     document.getElementById('bookingText').textContent =
       'Booked thru July 2026 — August & September now open';
-    if (configured) console.warn('Could not load Google Sheet. Check it is published and Sheet ID is correct.');
+
+    const msg = err && err.message ? err.message : 'Unknown error';
+    showDataBadge(false, configured ? 'sheet error' : 'no Sheet ID');
+    console.warn('⚠️ Could not load Google Sheet:', msg);
+    console.warn(
+      '🔧 Checklist:\n' +
+      '  1. Sheet ID correct? Current: ' + SHEET_ID + '\n' +
+      '  2. Published to web? File → Share → Publish to web\n' +
+      '  3. Tab names exactly "Menu" and "Settings" (case-sensitive)\n' +
+      '  4. Sheet is set to "Anyone with the link can view"'
+    );
   }
+
   document.getElementById('skelGrid').style.display = 'none';
   document.getElementById('menuGrid').style.display  = '';
   buildTabs(allItems);
