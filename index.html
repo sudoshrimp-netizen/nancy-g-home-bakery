@@ -954,29 +954,49 @@ const FALLBACK = [
 
 // CSV parsing
 function parseCSV(raw) {
-  // PapaParse handles all CSV edge cases:
-  // embedded newlines, escaped quotes, \r\n endings, etc.
   const result = Papa.parse(raw.trim(), {
     skipEmptyLines: true,
     relaxColumnCount: true,
+    newline: '\n',      // we already normalised to \n in fetchSheet
   });
-  // Trim every field value
+  console.log(`📊 PapaParse: ${result.data.length} rows, ${result.errors.length} errors`);
+  if (result.errors.length) console.warn('PapaParse errors:', result.errors);
   return result.data.map(row => row.map(f => (f || '').trim()));
 }
 
-// Expected Menu columns: Category|Name|Description|Price|Notes|Available|Photo URL (optional)
+// When gviz bundles several rows into one quoted field with embedded newlines,
+// this expands them back into individual rows.
+function expandMegaRow(row) {
+  if (!row.some(f => f.includes('\n'))) return [row];
+  const cols = row.map(f => f.split('\n'));
+  const len  = Math.max(...cols.map(c => c.length));
+  const expanded = [];
+  for (let i = 0; i < len; i++) {
+    expanded.push(cols.map(c => (c[i] || '').trim()));
+  }
+  return expanded;
+}
+
+// Expected columns: Category | Name | Description | Price | Notes | Available | Photo URL
 function parseMenu(rows) {
-  // Find the header row (the one where col 0 is "Category") regardless
-  // of how many title/instruction rows appear above it in the sheet.
+  // Find the header row dynamically (col 0 = "category")
   let startIdx = 0;
   for (let i = 0; i < rows.length; i++) {
     if ((rows[i][0] || '').trim().toLowerCase() === 'category') {
-      startIdx = i + 1; // data begins on the row AFTER the header
+      startIdx = i + 1;
       break;
     }
   }
-  return rows.slice(startIdx)
-    .filter(r => r[0] && r[1] && (r[0] || '').trim().toLowerCase() !== 'category')
+
+  // Expand any mega-rows caused by gviz embedding newlines inside quoted fields
+  const flat = [];
+  for (const row of rows.slice(startIdx)) {
+    flat.push(...expandMegaRow(row));
+  }
+
+  const SKIP = ['category', 'name', ''];
+  return flat
+    .filter(r => r[0] && r[1] && !SKIP.includes((r[0] || '').trim().toLowerCase()))
     .map(r => ({
       cat:   (r[0] || '').trim(),
       name:  (r[1] || '').trim(),
@@ -1011,21 +1031,17 @@ function parseSettings(rows) {
 }
 
 async function fetchSheet(tab) {
-  // Cache-bust so updates to the sheet reflect immediately
   const bust = Date.now();
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&t=${bust}`;
   const r = await fetch(url, { cache: 'no-store' });
-  if (!r.ok) throw new Error(`HTTP ${r.status} for sheet tab: ${tab}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status} for tab: ${tab}`);
   const text = await r.text();
-  // Google returns a 200-status HTML login redirect when the sheet isn't
-  // published — detect this and throw so we fall back gracefully
-  if (text.trim().startsWith('<')) {
-    throw new Error(
-      'Sheet returned HTML instead of CSV. ' +
-      'Make sure the sheet is published: File → Share → Publish to web → CSV.'
-    );
-  }
-  return text;
+  if (text.trim().startsWith('<')) throw new Error('Sheet returned HTML — check it is published to web.');
+  // Strip UTF-8 BOM if present, normalise line endings
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Log first 300 chars so we can spot format issues in the console
+  console.log(`📄 Raw CSV [${tab}] (first 300 chars):`, JSON.stringify(clean.slice(0, 300)));
+  return clean;
 }
 
 let allItems = [];
