@@ -671,13 +671,13 @@
         <p class="sl">Meet the Baker</p>
         <h2 class="st">Hi, I'm <em>Nancy</em></h2>
         <div class="about-text">
-          <p>Baking has been one of my favorite hobbies for many years. My idea was simple: bake comfort-like desserts you don't really find at the stores — and even if you did, mine are always fresh and made to order.</p>
-          <p>I'm a mom of 4, wife of 1, and I have 4 fur babies (2 dogs, 1 cat &amp; 1 bunny). Life is beautifully full, so I bake a couple days a week and keep my orders intentionally limited. I'm a one-woman show — and I prefer it that way.</p>
-          <p>I have my CFO baking permit &amp; business license. My style is simple — always learning, always growing. I'm humbly grateful to be a part of your special moments through dessert.</p>
+          <p id="about_p1">Baking has been one of my favorite hobbies for many years. My idea was simple: bake comfort-like desserts you don't really find at the stores — and even if you did, mine are always fresh and made to order.</p>
+          <p id="about_p2">I'm a mom of 4, wife of 1, and I have 4 fur babies (2 dogs, 1 cat &amp; 1 bunny). Life is beautifully full, so I bake a couple days a week and keep my orders intentionally limited. I'm a one-woman show — and I prefer it that way.</p>
+          <p id="about_p3">I have my CFO baking permit &amp; business license. My style is simple — always learning, always growing. I'm humbly grateful to be a part of your special moments through dessert.</p>
           <div class="pull-quote">
-            <p>"Community over competition is how it should be. 🤎"</p>
+            <p id="about_quote">"Community over competition is how it should be. 🤎"</p>
           </div>
-          <p>I regularly spotlight other small businesses on my IG stories. It's not just me me me… it's Us. I believe we as a community need to have each other's back.</p>
+          <p id="about_p4">I regularly spotlight other small businesses on my IG stories. It's not just me me me… it's Us. I believe we as a community need to have each other's back.</p>
         </div>
       </div>
 
@@ -940,8 +940,8 @@ const FALLBACK = [
   { cat:'Cookies',   name:"Reese's Cookie Bites",           desc:"Cookie cups filled with Reese's and chocolate, topped with a pretzel.", price:'$16/dozen', notes:'', avail:true },
   { cat:'Cookies',   name:'Lactation Cookies',              desc:'Specially made oatmeal cookies to support nursing moms.',            price:'$20/dozen',   notes:'Great gift for new moms!', avail:true },
   { cat:'Brownies',  name:'Cacao Brownies',                 desc:'Rich cacao brownies available by the piece or as a full tray.',     price:'$6 each · $22–$25 tray', notes:"Flavors: Plain ($22 tray), Mint, Oreo, M&M's, Reese's ($25 tray). 4×4 pieces or 8×8 tray.", avail:true },
-  { cat:'Cakes',     name:'9 Inch Lemon Olive Oil Cake',        desc:'Light, moist lemon olive oil cake dusted with powdered sugar.',     price:'$30',         notes:'', avail:true },
-  { cat:'Cakes',     name:'6 Inch Lemon Olive Oil Cake',        desc:'Same great lemon olive oil cake in a smaller size.',                price:'$18',         notes:'', avail:true },
+  { cat:'Cakes',     name:'9" Lemon Olive Oil Cake',        desc:'Light, moist lemon olive oil cake dusted with powdered sugar.',     price:'$30',         notes:'', avail:true },
+  { cat:'Cakes',     name:'6" Lemon Olive Oil Cake',        desc:'Same great lemon olive oil cake in a smaller size.',                price:'$18',         notes:'', avail:true },
   { cat:'Cakes',     name:'Custom Cakes',                   desc:'Simple, single-tiered custom cakes in your choice of flavor.',     price:'Contact for pricing', notes:'Flavors: Vanilla, Chocolate, Red Velvet, Funfetti, Tres Leches, Lemon Blueberry & Carrot. Sizes: 6", 8" & 10" only.', avail:true },
   { cat:'Specialty', name:'Dreamy Pineapple Mini Desserts', desc:'Tropical pineapple cream desserts with a buttery crumble topping, served in individual cups.', price:'$30/dozen · $22 (8×8 tray)', notes:'', avail:true },
   { cat:'Specialty', name:'Churro Cheesecake',              desc:'Indulgent churro-inspired cheesecake bites with cinnamon sugar crust.', price:'$40 regular · $45 pumpkin', notes:'Full order = 32 bite-size pieces. Half orders available. Great for dessert tables.', avail:true },
@@ -1068,6 +1068,16 @@ function renderMenu() {
   }).join('');
 }
 
+function renderAbout(settings) {
+  // Each key maps to an element ID — only update if the sheet has a value
+  const fields = ['about_p1', 'about_p2', 'about_p3', 'about_quote', 'about_p4'];
+  fields.forEach(key => {
+    const val = (settings[key] || '').trim();
+    const el  = document.getElementById(key);
+    if (val && el) el.textContent = val;
+  });
+}
+
 function showDataBadge(live, detail) {
   // Badge hidden from visitors — status is console-only
   if (live) {
@@ -1096,6 +1106,7 @@ async function loadData() {
     const status = settings.booking_status || 'Check Instagram for availability';
     const note   = settings.announcement  || '';
     document.getElementById('bookingText').textContent = note ? `${status} — ${note}` : status;
+    renderAbout(settings);
 
     showDataBadge(true);
     console.info('✅ Menu loaded from Google Sheets — ' + allItems.length + ' items');
