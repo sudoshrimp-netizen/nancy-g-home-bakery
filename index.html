@@ -1032,7 +1032,7 @@ function parseSettings(rows) {
 
 async function fetchSheet(tab) {
   const bust = Date.now();
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&t=${bust}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&tq=select%20*&sheet=${encodeURIComponent(tab)}&t=${bust}`;
   const r = await fetch(url, { cache: 'no-store' });
   if (!r.ok) throw new Error(`HTTP ${r.status} for tab: ${tab}`);
   const text = await r.text();
